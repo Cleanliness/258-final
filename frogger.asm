@@ -16,97 +16,95 @@ frogColor: .word 0x00ccdc39
 carColor: .word 0x00d50000
 tireColor: .word 0x00000000
 
+# game data
+lane1Speed: .word 1 # road lower
+lane2Speed: .word -1 # road top
+lane3Speed: .word 1 # log bottom
+lane4Speed: .word -1 # log mid
+lane5Speed: .word 1 # log top
+
+lane1x: .word 20
+lane2x: .word 3
+lane3x: .word 2
+lane4x: .word 10
+lane5x: .word 18
+
 .text
 main: # entry point
 	jal drawScene
 	
-	# --------- drawing logs -------------
-	# log 1
-	li $t0, 15 # x
-	li $t1, 12 # y
-	li $t2, 12 # width
+	# ---- drawing logs ----
+	lw $t0, lane3x # x1
+	lw $t1, lane4x # x2
+	lw $t2, lane5x # x3
 	
 	# push function arguments on stack
 	sw $t0 0($sp)
 	sw $t1 -4($sp)
 	sw $t2 -8($sp)
 	addi $sp, $sp, -12
-	jal drawLog
-	
-	# log 2
-	li $t0, 2 # x
-	li $t1, 12 # y
-	li $t2, 8 # width
-	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawLog
-	
-	# log 3
-	li $t0, 8 # x
-	li $t1, 8 # y
-	li $t2, 8 # width
-	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawLog
-	
-	# log 4
-	li $t0, 12 # x
-	li $t1, 4 # y
-	li $t2, 8 # width
-	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawLog
+	jal drawLogs
 	
 	# ------------ drawing cars --------------
-	# car 1
-	li $t0, 20 # x
-	li $t1, 20 # y
-	li $t2, 0x00ff0000# color
+	lw $t0, lane1x # x1
+	lw $t1, lane2x # x2
 	
 	# push function arguments on stack
 	sw $t0 0($sp)
 	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawCar
+	addi $sp, $sp, -8
+	jal drawCars
 	
-	# car 2
-	li $t0, 3 # x
-	li $t1, 20 # y
-	li $t2, 0x00ff0000# color
+	# ------ update positions ------
 	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawCar
+	li $t0, 32 # screen width
 	
-	# car 3
-	li $t0, 13 # x
-	li $t1, 24 # y
-	li $t2, 0x00ff0000# color
+	# update lane 1 position
+	la $t3, lane1x # address
+	lw $t1, lane1x # lane 1
+	lw $t2, lane1Speed # add speed
+	add $t1, $t1, $t2
+	div $t1, $t0 # x mod 32
+	mfhi $t1
+	sw $t1 0($t3)
 	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawCar
+	# update lane 2 position
+	lw $t1, lane2x # lane 1
+	la $t3, lane2x # address
+	lw $t2, lane2Speed
+	add $t1, $t1, $t2
+	div $t1, $t0 # x mod 32
+	mfhi $t1
+	sw $t1 0($t3)
 
+	# update lane 3 position
+	lw $t1, lane3x # lane 1
+	la $t3, lane3x # address
+	lw $t2, lane3Speed
+	add $t1, $t1, $t2
+	div $t1, $t0 # x mod 32
+	mfhi $t1
+	sw $t1 0($t3) 
 
+	# update lane 4 position
+	lw $t1, lane4x # lane 1
+	la $t3, lane4x # address
+	lw $t2, lane4Speed
+	add $t1, $t1, $t2
+	div $t1, $t0 # x mod 32
+	mfhi $t1
+	sw $t1 0($t3)
+
+ 	# update lane 5 position
+	lw $t1, lane5x # lane 1
+	la $t3, lane5x # address
+	lw $t2, lane5Speed
+	add $t1, $t1, $t2
+	div $t1, $t0 # x mod 32
+	mfhi $t1
+	sw $t1 0($t3) 
+	
+	j main # game loop
 Exit:
 li $v0, 10 # terminate the program gracefully
 syscall
@@ -445,8 +443,102 @@ drawLog: # drawLog(x, y, width) -> null
 	addi $sp, $sp, 4
 	lw $ra 0($sp)
 		
+	addi $sp, $sp, 12 # decrease stack size
+	
+	jr $ra # return from draw log
+	
+drawLogs: # drawLogs(x1, x2, x3) -> None
+# draw logs given x position of each lane
+
+	# initialization
+	
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
+				
+	# lane 1 log
+	lw $t0, 16($sp) # x1 from funct arg
+	li $t1, 12 # y
+	li $t2, 12 # width
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawLog
+	
+	# lane 2 log
+	lw $t0, 12($sp) # x2 from funct arg
+	li $t1, 8 # y
+	li $t2, 8 # width
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawLog
+	
+	# lane 3 log
+	lw $t0, 8($sp) # x3 from funct ar
+	li $t1, 4 # y
+	li $t2, 8 # width
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawLog
+	
+	# pop return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+		
+	addi $sp, $sp, 12 # decrease stack size
+	
+	jr $ra # return from draw logs
+
+drawCars: #drawCars(x1, x2) -> null
+# draw cars given x position of each lane
+
+	# initialization
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
+	# car in lane 1
+	lw $t0, 12($sp) # x1
+	li $t1, 24 # y
+	li $t2, 0x00ff0000# color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawCar
+	
+	# car in lane 2
+	lw $t0, 8($sp) # x2
+	li $t1, 20 # y
+	li $t2, 0x00ff0000# color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawCar
+	
+	# pop return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+		
 	addi $sp, $sp, 8 # decrease stack size
 	
-	jr $ra # return from draw car
+	jr $ra # return from draw cars
 	
 	
