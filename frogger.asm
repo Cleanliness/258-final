@@ -18,6 +18,8 @@ tireColor: .word 0x00000000
 
 # =============== game data =================
 
+gameclock: .word 0 # counter of how many ticks
+
 # hazard speeds
 lane1Speed: .word 1 # road lower
 lane2Speed: .word -1 # road top
@@ -38,6 +40,30 @@ frogy: .word 28 # starting position
 
 .text
 main: # entry point
+	# ------ handle keyboard input -----
+	lw $t8, 0xffff0000
+	beq $t8, 1, handle_input
+	
+	# update game clock
+	lw $t0, gameclock # ticks
+	la $t3, gameclock # address
+	addi $t1, $t0, 1 # ticks += 1
+	sw $t1 0($t3) # write value
+	
+	# check for every fourth tick
+	li $t0 4
+	div $t1, $t0 # ticks mod 4
+	mfhi $t1
+	beq $t1, $zero, update_environment
+	
+	# sleep
+	li $v0, 32
+	li $a0, 30
+	syscall
+	
+	j main # game loop
+	
+	update_environment:
 	jal drawScene
 	
 	# ---- drawing logs ----
@@ -61,10 +87,6 @@ main: # entry point
 	sw $t1 -4($sp)
 	addi $sp, $sp, -8
 	jal drawCars
-	
-	# ------ handle keyboard input -----
-	lw $t8, 0xffff0000
-	beq $t8, 1, handle_input
 	
 	# ------ draw frog -------
 	lw $t0, frogx # x
@@ -127,11 +149,6 @@ main: # entry point
 	mfhi $t1
 	sw $t1 0($t3) 
 	
-	# sleep
-	li $v0, 32
-	li $a0, 250
-	syscall
-	
 	j main # game loop
 Exit:
 li $v0, 10 # terminate the program gracefully
@@ -140,6 +157,7 @@ syscall
 handle_input: # handle_input() -> null
 # handle's user keyboard input. Assume that a key has already been pressed
 	lw $t2, 0xffff0004 # t2 = keyboard value
+	li $t4, 32 #t4 = 32
 	beq $t2, 0x61, respond_to_A # check if 'a' is pressed
 	beq $t2, 0x73, respond_to_S  # check if 's' is pressed
 	beq $t2, 0x77, respond_to_W  # check if 'w' is pressed
@@ -152,6 +170,8 @@ handle_input: # handle_input() -> null
 		lw $t0 frogx
 	
 		addi $t0, $t0, -4 # x -= 4
+		div $t0, $t4 # x mod 32
+		mfhi $t0
 		sw $t0, 0($t3) # update frogx
 		j end_handle_input
 	
@@ -160,6 +180,8 @@ handle_input: # handle_input() -> null
 		lw $t0 frogy
 	
 		addi $t0, $t0, 4 # y += 4
+		div $t0, $t4 # x mod 32
+		mfhi $t0
 		sw $t0, 0($t3) # update frogx
 		j end_handle_input
 		
@@ -168,6 +190,8 @@ handle_input: # handle_input() -> null
 		lw $t0 frogy
 	
 		addi $t0, $t0, -4 # y += 4
+		div $t0, $t4 # x mod 32
+		mfhi $t0
 		sw $t0, 0($t3) # update frogx
 		j end_handle_input
 	
@@ -176,6 +200,8 @@ handle_input: # handle_input() -> null
 		lw $t0 frogx
 	
 		addi $t0, $t0, 4 # x -= 4
+		div $t0, $t4 # x mod 32
+		mfhi $t0
 		sw $t0, 0($t3) # update frogx
 		j end_handle_input
 	
