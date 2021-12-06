@@ -16,7 +16,7 @@ frogColor: .word 0x00ccdc39
 carColor: .word 0x00d50000
 tireColor: .word 0x00000000
 
-# game data
+# =============== game data =================
 lane1Speed: .word 1 # road lower
 lane2Speed: .word -1 # road top
 lane3Speed: .word 1 # log bottom
@@ -32,6 +32,18 @@ lane5x: .word 15
 .text
 main: # entry point
 	jal drawScene
+	
+	# draw frog test
+	li $t0, 14 # x
+	li $t1, 28 # y
+	li $t2, 0x00ccdc39 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawFrog
 	
 	# ---- drawing logs ----
 	lw $t0, lane3x # x1
@@ -454,6 +466,111 @@ drawLog: # drawLog(x, y, width) -> null
 	addi $sp, $sp, 12 # decrease stack size
 	
 	jr $ra # return from draw log
+	
+drawFrog: # drawFrog(x, y, color) -> null
+# draw a frog given x y position and color
+
+	# initialization
+	addi $sp, $sp, 4
+	lw $a0 0($sp) # color
+	lw $a1 4($sp) # y coord
+	lw $a2 8($sp) # x coord
+	
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
+	# ---- drawing body ----
+	addi $t1, $a1, 1 # y
+	addi $t4, $a2, 1 # x
+	li $t3, 2 # width
+	li $t2, 2 # height
+	
+	sw $t4 0($sp) # x
+	sw $t1 -4($sp) # y
+	sw $t2 -8($sp) # height
+	sw $t3 -12($sp) # width
+	sw $a0 -16($sp) # color
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# ---- drawing legs ----
+	# reload x and y from stack
+	lw $a1 8($sp) # y coord
+	lw $a2 12($sp) # x coord
+	
+	# top left
+	li $t3, 1 # width
+	li $t2, 1 # height
+	
+	sw $a2 0($sp) # x
+	sw $a1 -4($sp) # y
+	sw $t2 -8($sp) # height
+	sw $t3 -12($sp) # width
+	sw $a0 -16($sp) # color
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# reload x and y from stack
+	lw $a1 8($sp) # y coord
+	lw $a2 12($sp) # x coord
+	
+	# reload x and y from stack
+	addi $t0, $a2, 3
+	li $t3, 1 # width
+	li $t2, 1 # height
+	
+	sw $t0 0($sp) # x
+	sw $a1 -4($sp) # y
+	sw $t2 -8($sp) # height
+	sw $t3 -12($sp) # width
+	sw $a0 -16($sp) # color
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# reload x and y from stack
+	lw $a1 8($sp) # y coord
+	lw $a2 12($sp) # x coord
+	
+	# bottom right
+	addi $t0, $a2, 3 # x
+	addi $t1, $a1, 2 # y
+	li $t3, 1 # width
+	li $t2, 2 # height
+	
+	sw $t0 0($sp) # x
+	sw $t1 -4($sp) # y
+	sw $t2 -8($sp) # height
+	sw $t3 -12($sp) # width
+	sw $a0 -16($sp) # color
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# reload x and y from stack
+	lw $a1 8($sp) # y coord
+	lw $a2 12($sp) # x coord
+	
+	# bottom left
+	addi $t1, $a1, 2 # y
+	li $t3, 1 # width
+	li $t2, 2 # height
+	
+	sw $a2 0($sp) # x
+	sw $t1 -4($sp) # y
+	sw $t2 -8($sp) # height
+	sw $t3 -12($sp) # width
+	sw $a0 -16($sp) # color
+	addi $sp, $sp, -20
+	jal drawRect
+
+	
+	# pop return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+		
+	addi $sp, $sp, 8 # decrease stack size
+	
+	jr $ra # return from draw car
 	
 drawLogs: # drawLogs(x1, x2, x3) -> None
 # draw logs given x position of each lane
