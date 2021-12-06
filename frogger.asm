@@ -104,6 +104,11 @@ main: # entry point
 	mfhi $t1
 	sw $t1 0($t3) 
 	
+	# sleep
+	li $v0, 32
+	li $a0, 250
+	syscall
+	
 	j main # game loop
 Exit:
 li $v0, 10 # terminate the program gracefully
@@ -138,13 +143,16 @@ drawRect: # drawRect(x, y, height, width, color) -> null
 		rect_pix_loop: # for each pixel
 			beq $t1, $a1, rect_pix_loop_end # if curr x = width: end
 			sll $t3, $t1, 2 # t3 = curr x*4
+			sll $t7, $t0, 2 # t7 = x coord*4 (get x offset)
+			add $t3, $t3, $t7 # add offset to curr x
+			li $t7 128 # t7 = 128
+			divu $t3, $t7 # x mod 128
+			mfhi $t3 # get result of x mod 128
 			sll $t4, $t2, 7 # t4 = curr y*128
 			add $t5, $t3, $t4 # t5 = raw position of pixel
-			sll $t3, $t0, 2 # t3 = x coord*4
 			sll $t4, $a3, 7 # t4 = y coord*128
 			
 			# adding x and y coords to offsets
-			add $t5, $t5, $t3
 			add $t5, $t5, $t4
 			
 			add $t5, $t6, $t5 # add pos to display address
