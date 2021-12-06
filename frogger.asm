@@ -23,11 +23,11 @@ lane3Speed: .word 1 # log bottom
 lane4Speed: .word -1 # log mid
 lane5Speed: .word 1 # log top
 
-lane1x: .word 20
+lane1x: .word 10
 lane2x: .word 3
 lane3x: .word 2
 lane4x: .word 10
-lane5x: .word 18
+lane5x: .word 15
 
 .text
 main: # entry point
@@ -55,7 +55,7 @@ main: # entry point
 	addi $sp, $sp, -8
 	jal drawCars
 	
-	# ------ update positions ------
+	# ------ update environment ------
 	
 	li $t0, 32 # screen width
 	
@@ -464,8 +464,8 @@ drawLogs: # drawLogs(x1, x2, x3) -> None
 	sw $ra, 0($sp)
 	addi $sp, $sp, -4
 	
-				
-	# lane 1 log
+	# --------- lane 1 ----------			
+	# lane 1 log 1 (left)
 	lw $t0, 16($sp) # x1 from funct arg
 	li $t1, 12 # y
 	li $t2, 12 # width
@@ -477,7 +477,21 @@ drawLogs: # drawLogs(x1, x2, x3) -> None
 	addi $sp, $sp, -12
 	jal drawLog
 	
-	# lane 2 log
+	# lane 1 log 2 (right)
+	lw $t0, 16($sp) # x1 from funct arg
+	addi $t0, $t0, 15
+	li $t1, 12 # y
+	li $t2, 8 # width
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawLog
+	
+	# --------- lane 2 ----------	
+	# lane 2 log 1
 	lw $t0, 12($sp) # x2 from funct arg
 	li $t1, 8 # y
 	li $t2, 8 # width
@@ -489,10 +503,37 @@ drawLogs: # drawLogs(x1, x2, x3) -> None
 	addi $sp, $sp, -12
 	jal drawLog
 	
-	# lane 3 log
-	lw $t0, 8($sp) # x3 from funct ar
+	# lane 2 log 2
+	lw $t0, 12($sp) # x2 from funct arg
+	addi $t0, $t0, 18
+	li $t1, 8 # y
+	li $t2, 8 # width
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawLog
+
+	# --------- lane 3 ----------	
+	# lane 3 log 1
+	lw $t0, 8($sp) # x3 from funct arg
 	li $t1, 4 # y
 	li $t2, 8 # width
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawLog
+	
+	# lane 3 log 2
+	lw $t0, 8($sp) # x3 from funct arg
+	addi $t0, $t0 12
+	li $t1, 4 # y
+	li $t2, 10 # width
 	
 	# push function arguments on stack
 	sw $t0 0($sp)
@@ -517,7 +558,8 @@ drawCars: #drawCars(x1, x2) -> null
 	sw $ra, 0($sp)
 	addi $sp, $sp, -4
 	
-	# car in lane 1
+	# --------- lane 1 ----------
+	# car 1 in lane 1
 	lw $t0, 12($sp) # x1
 	li $t1, 24 # y
 	li $t2, 0x00ff0000# color
@@ -529,8 +571,35 @@ drawCars: #drawCars(x1, x2) -> null
 	addi $sp, $sp, -12
 	jal drawCar
 	
-	# car in lane 2
+	# car 2 in lane 1
+	lw $t0, 12($sp) # x1
+	addi $t0, $t0, 16 # offset of second car
+	li $t1, 24 # y
+	li $t2, 0x00ff0000# color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawCar
+	
+	# --------- lane 2 ----------
+	# car 1 in lane 2
 	lw $t0, 8($sp) # x2
+	li $t1, 20 # y
+	li $t2, 0x00ff0000# color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawCar
+	
+	# car 2 in lane 2
+	lw $t0, 8($sp) # x2
+	addi $t0, $t0, 12
 	li $t1, 20 # y
 	li $t2, 0x00ff0000# color
 	
