@@ -17,33 +17,28 @@ carColor: .word 0x00d50000
 tireColor: .word 0x00000000
 
 # =============== game data =================
+
+# hazard speeds
 lane1Speed: .word 1 # road lower
 lane2Speed: .word -1 # road top
 lane3Speed: .word 1 # log bottom
 lane4Speed: .word -1 # log mid
 lane5Speed: .word 1 # log top
 
+# x position of hazards
 lane1x: .word 10
 lane2x: .word 3
 lane3x: .word 2
 lane4x: .word 10
 lane5x: .word 15
 
+# frog data
+frogx: .word 14
+frogy: .word 28 # starting position
+
 .text
 main: # entry point
 	jal drawScene
-	
-	# draw frog test
-	li $t0, 14 # x
-	li $t1, 28 # y
-	li $t2, 0x00ccdc39 # color
-	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawFrog
 	
 	# ---- drawing logs ----
 	lw $t0, lane3x # x1
@@ -66,6 +61,22 @@ main: # entry point
 	sw $t1 -4($sp)
 	addi $sp, $sp, -8
 	jal drawCars
+	
+	# ------ handle keyboard input -----
+	lw $t8, 0xffff0000
+	beq $t8, 1, handle_input
+	
+	# ------ draw frog -------
+	lw $t0, frogx # x
+	lw $t1, frogy # y
+	li $t2, 0x00ccdc39 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawFrog
 	
 	# ------ update environment ------
 	
@@ -126,11 +137,48 @@ Exit:
 li $v0, 10 # terminate the program gracefully
 syscall
 
-procedure:
-# test procedure a0 = color
-	lw $t9, displayAddress
-	sw $a0, 32($t9)
-	jr $ra # return
+handle_input: # handle_input() -> null
+# handle's user keyboard input. Assume that a key has already been pressed
+	lw $t2, 0xffff0004 # t2 = keyboard value
+	beq $t2, 0x61, respond_to_A # check if 'a' is pressed
+	beq $t2, 0x73, respond_to_S  # check if 's' is pressed
+	beq $t2, 0x77, respond_to_W  # check if 'w' is pressed
+	beq $t2, 0x64, respond_to_D  # check if 'D' is pressed
+	end_handle_input:
+	jr $ra # return from handle_input
+	
+	respond_to_A: # go left
+		la $t3 frogx
+		lw $t0 frogx
+	
+		addi $t0, $t0, -4 # x -= 4
+		sw $t0, 0($t3) # update frogx
+		j end_handle_input
+	
+	respond_to_S: # go down
+		la $t3 frogy
+		lw $t0 frogy
+	
+		addi $t0, $t0, 4 # y += 4
+		sw $t0, 0($t3) # update frogx
+		j end_handle_input
+		
+	respond_to_W: # go up
+		la $t3 frogy
+		lw $t0 frogy
+	
+		addi $t0, $t0, -4 # y += 4
+		sw $t0, 0($t3) # update frogx
+		j end_handle_input
+	
+	respond_to_D: # go right
+		la $t3 frogx
+		lw $t0 frogx
+	
+		addi $t0, $t0, 4 # x -= 4
+		sw $t0, 0($t3) # update frogx
+		j end_handle_input
+	
 
 drawRect: # drawRect(x, y, height, width, color) -> null
 # draw a rectangle given top left point, height, width, color
