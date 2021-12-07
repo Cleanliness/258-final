@@ -8,6 +8,8 @@
 # - Base Address for Display: 0x10008000 ($gp)
 #
 .data
+
+# global variables
 displayAddress: .word 0x10008000
 grassColor: .word 0x004caf4f
 roadColor: .word 0x009e9e9e
@@ -16,8 +18,9 @@ frogColor: .word 0x00ccdc39
 carColor: .word 0x00d50000
 tireColor: .word 0x00000000
 
-# =============== game data =================
-
+# ===========================================
+# =--------------- game data ---------------=
+# ===========================================
 gameclock: .word 0 # counter of how many ticks
 
 # hazard speeds
@@ -34,15 +37,26 @@ lane3x: .word 2
 lane4x: .word 10
 lane5x: .word 15
 
+# finish zones occupied? 1 = yes, 0 = no
+fz1_full: .word 0
+fz2_full: .word 0
+fz3_full: .word 0
+fz4_full: .word 0
+
 # frog data
 frogx: .word 14
 frogy: .word 28 # starting position
+lives: .word 3 # number of lives
+completed: .word 0 # num frogs reached finish point
 
 .text
 main: # entry point
-	# ------ handle keyboard input -----
+	# ------ handle keyboard input for frog -----
 	lw $t8, 0xffff0000
 	beq $t8, 1, handle_input
+	
+	# check if frog is in completion region
+	jal check_completed
 	
 	# update game clock
 	lw $t0, gameclock # ticks
@@ -63,10 +77,9 @@ main: # entry point
 	
 	j main # game loop
 	
+	# ============== update environment ================
 	update_environment:
 	jal drawScene
-	
-	# ------ update environment ------
 	
 	li $t0, 32 # screen width
 	
@@ -150,13 +163,134 @@ main: # entry point
 	addi $sp, $sp, -12
 	jal drawFrog
 	
+	# ==== UI elements ====
+	jal drawLives
+	
 	j main # game loop
 Exit:
 li $v0, 10 # terminate the program gracefully
 syscall
 
+check_completed: # check_completed() -> null
+# check if the frog reached a valid completion region
+	
+	# --- check if frog y is valid ---
+	la $t3, frogy
+	lw $t0, frogy
+					
+	li $t2, 4 # t2 = completion region y
+	blt $t0, $t2, check_completion_x # if frog y < 4, check x
+
+	end_check_completed:
+	jr $ra # return from check_completed()
+	
+	check_completion_x: # check if frog x is valid
+		la $t3, frogx
+		lw $t0, frogx
+		
+		# check left x coordinates in finish zones
+		# ----- finish zone 1 -----
+		li $t2, 1 # t2 = 1
+		bge $t0, $t2, check_fz1 # if frog x >= 1
+		not_fz1: # jump here if frog not in fz1
+		
+		# ----- finish zone 2 -----
+		li $t2, 9 
+		bge $t0, $t2, check_fz2 # if frog x >= 9
+		not_fz2: # jump here if frog not in fz2
+		
+		# ----- finish zone 3 -----
+		li $t2, 17
+		bge $t0, $t2, check_fz3 # if frog x >= 17
+		not_fz3: # jump here if frog not in fz2
+		
+		# ----- finish zone 4 -----
+		li $t2, 25
+		bge $t0, $t2, check_fz4 # if frog x >= 25
+		not_fz4: # jump here if frog not in fz2
+		
+		# reached if in x is no finish zones
+		j reduce_lives
+		
+		# check right x coordinates in finish zones
+		check_fz1:
+			li $t2, 3
+			ble $t0, $t2, in_fz1 # if x <= 4, then frog is in fz1
+			j not_fz1
+		
+		check_fz2:
+			li $t2, 11
+			ble $t0, $t2, in_fz2 # if x <= 11, then frog is in fz2
+			j not_fz2
+
+		check_fz3:
+			li $t2, 19
+			ble $t0, $t2, in_fz3 # if x <= 19, then frog is in fz3
+			j not_fz3
+			
+		check_fz4:
+			li $t2, 27
+			ble $t0, $t2, in_fz4 # if x <= 19, then frog is in fz3
+			j not_fz4
+					
+		# ------- update game data if in FZ -------
+		in_fz1: # frog in finish zone 1 = true
+			lw, $t0, fz1_full
+			la, $t1, fz1_full
+			li $t2, 1
+			beq $t0, $t2, reduce_lives # lose life if zone occupied
+			li $t0, 1 # otherwise mark zone as occupied
+			sw $t0, 0($t1)
+			j reset_frog_pos
+		
+		in_fz2: # frog in finish zone 2 = true
+			lw, $t0, fz2_full
+			la, $t1, fz2_full
+			li $t2, 1
+			beq $t0, $t2, reduce_lives # lose life if zone occupied
+			li $t0, 1 # otherwise mark zone as occupied
+			sw $t0, 0($t1)
+			j reset_frog_pos
+			
+		in_fz3: # frog in finish zone 3 = true
+			lw, $t0, fz3_full
+			la, $t1, fz3_full
+			li $t2, 1
+			beq $t0, $t2, reduce_lives # lose life if zone occupied
+			li $t0, 1 # otherwise mark zone as occupied
+			sw $t0, 0($t1)
+			j reset_frog_pos
+		
+		in_fz4: # frog in finish zone 4 = true
+			lw, $t0, fz4_full
+			la, $t1, fz4_full
+			li $t2, 1
+			beq $t0, $t2, reduce_lives # lose life if zone occupied
+			li $t0, 1 # otherwise mark zone as occupied
+			sw $t0, 0($t1)
+			j reset_frog_pos
+		
+		reduce_lives: # reduce number of frog lifes
+			lw $t0, lives
+			la $t1, lives
+			
+			addi $t0, $t0, -1
+			sw $t0, 0($t1)
+			
+		reset_frog_pos: # reset frog position
+			li $t3, 14 # x
+			la $t0, frogx
+			
+			li $t4, 28 # y
+			la $t5, frogy
+			
+			# reset frog position to initial
+			sw $t3, 0($t0) # x
+			sw $t4, 0($t5) # y
+			j end_check_completed
+			
 handle_input: # handle_input() -> null
-# handle's user keyboard input. Assume that a key has already been pressed
+# handle's user keyboard input for the game. Assume that a key has already been pressed
 	lw $t2, 0xffff0004 # t2 = keyboard value
 	li $t4, 32 #t4 = 32
 	beq $t2, 0x61, respond_to_A # check if 'a' is pressed
@@ -218,7 +352,7 @@ handle_input: # handle_input() -> null
 		la $t3 frogx
 		lw $t0 frogx
 		
-		li $t2 24 # t2 = screen width - 2*frog width
+		li $t2 24 # t2 = 24
 		bgt $t0, $t2 x_right_overflow # if frogx > t2
 	
 		addi $t0, $t0, 4 # x -= 4
@@ -232,13 +366,6 @@ handle_input: # handle_input() -> null
 			sw $t4, 0($t3)
 			j end_handle_input
 	
-	# ----- handle poor x value -----
-
-	
-
-		
-
-
 drawRect: # drawRect(x, y, height, width, color) -> null
 # draw a rectangle given top left point, height, width, color
 
@@ -284,7 +411,34 @@ drawRect: # drawRect(x, y, height, width, color) -> null
 	
 	rect_row_loop_end: # end of row loop
 	jr $ra # return from draw rect
+
+
+drawLives: # draw number of lives remaining
 	
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
+	# ====== draw lives as a rect =====
+	li $t0, 0 # x
+	li $t1, 30 # y
+	lw $t3, lives # width
+	li $t2, 1 # height
+	li $t4, 0x0000ff00 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# retrieve return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+	jr $ra
 drawScene: # draws background objects of game
 
 	# push return address
@@ -408,10 +562,80 @@ drawScene: # draws background objects of game
 	addi $sp, $sp, -20
 	jal drawRect
 	
+	# ------ draw frogs in finish zones -------
+	
+	# --finish zone 1--
+	lw, $t0, fz1_full
+	li $t2, 0
+	beq $t0, $t2, skip_frog_in_fz1 # skip drawing if empty
+	
+	li $t0, 2 # x
+	li $t1, 0 # y
+	li $t2, 0x00ccdc39 # color
+	
+	# drawing fz1 frog
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawFrog
+	skip_frog_in_fz1:
+	
+	# --finish zone 2--
+	lw, $t0, fz2_full
+	li $t2, 0
+	beq $t0, $t2, skip_frog_in_fz2 # skip drawing if empty
+	
+	li $t0, 10 # x
+	li $t1, 0 # y
+	li $t2, 0x00ccdc39 # color
+	
+	# drawing fz2 frog
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawFrog
+	skip_frog_in_fz2:
+	
+	# --finish zone 3--
+	lw, $t0, fz3_full
+	li $t2, 0
+	beq $t0, $t2, skip_frog_in_fz3 # skip drawing if empty
+	
+	li $t0, 18 # x
+	li $t1, 0 # y
+	li $t2, 0x00ccdc39 # color
+	
+	# drawing fz3 frog
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawFrog
+	skip_frog_in_fz3:
+	
+	# --finish zone 4--
+	lw, $t0, fz4_full
+	li $t2, 0
+	beq $t0, $t2, skip_frog_in_fz4 # skip drawing if empty
+	
+	li $t0, 26 # x
+	li $t1, 0 # y
+	li $t2, 0x00ccdc39 # color
+	
+	# drawing fz4 frog
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawFrog
+	skip_frog_in_fz4:
+	
+	end_draw_scene:
 	# retrieve return address
 	addi $sp, $sp, 4
 	lw $ra 0($sp)
-	
 	jr $ra # return from draw scene
 
 drawCar: # drawCar(x, y, color) -> null
