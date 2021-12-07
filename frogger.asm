@@ -50,9 +50,9 @@ main: # entry point
 	addi $t1, $t0, 1 # ticks += 1
 	sw $t1 0($t3) # write value
 	
-	# check for every fourth tick
-	li $t0 4
-	div $t1, $t0 # ticks mod 4
+	# check for every fifth tick
+	li $t0 5
+	div $t1, $t0 # ticks mod 5
 	mfhi $t1
 	beq $t1, $zero, update_environment
 	
@@ -65,40 +65,6 @@ main: # entry point
 	
 	update_environment:
 	jal drawScene
-	
-	# ---- drawing logs ----
-	lw $t0, lane3x # x1
-	lw $t1, lane4x # x2
-	lw $t2, lane5x # x3
-	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawLogs
-	
-	# ------------ drawing cars --------------
-	lw $t0, lane1x # x1
-	lw $t1, lane2x # x2
-	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	addi $sp, $sp, -8
-	jal drawCars
-	
-	# ------ draw frog -------
-	lw $t0, frogx # x
-	lw $t1, frogy # y
-	li $t2, 0x00ccdc39 # color
-	
-	# push function arguments on stack
-	sw $t0 0($sp)
-	sw $t1 -4($sp)
-	sw $t2 -8($sp)
-	addi $sp, $sp, -12
-	jal drawFrog
 	
 	# ------ update environment ------
 	
@@ -147,7 +113,42 @@ main: # entry point
 	add $t1, $t1, $t2
 	div $t1, $t0 # x mod 32
 	mfhi $t1
-	sw $t1 0($t3) 
+	sw $t1 0($t3)
+	
+		
+	# ---- drawing logs ----
+	lw $t0, lane3x # x1
+	lw $t1, lane4x # x2
+	lw $t2, lane5x # x3
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawLogs
+	
+	# ------------ drawing cars --------------
+	lw $t0, lane1x # x1
+	lw $t1, lane2x # x2
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	addi $sp, $sp, -8
+	jal drawCars
+	
+	# ------ draw frog -------
+	lw $t0, frogx # x
+	lw $t1, frogy # y
+	li $t2, 0x00ccdc39 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	addi $sp, $sp, -12
+	jal drawFrog
 	
 	j main # game loop
 Exit:
@@ -165,46 +166,78 @@ handle_input: # handle_input() -> null
 	end_handle_input:
 	jr $ra # return from handle_input
 	
+	# ------ movement buttons pressed ------
 	respond_to_A: # go left
 		la $t3 frogx
 		lw $t0 frogx
+		
+		li $t2 4 # t2 = frog width
+		blt $t0, $t2 x_left_overflow # if frogx < t2
 	
 		addi $t0, $t0, -4 # x -= 4
 		div $t0, $t4 # x mod 32
 		mfhi $t0
 		sw $t0, 0($t3) # update frogx
 		j end_handle_input
+		
+		x_left_overflow: # handle frog x going too far left
+			li $t4, 0
+			sw $t4, 0($t3)
+			j end_handle_input
 	
 	respond_to_S: # go down
 		la $t3 frogy
 		lw $t0 frogy
+					
+		li $t2 28 # t2 = starting y
+		bge $t0, $t2 y_down_overflow # if frog y >= 28
 	
 		addi $t0, $t0, 4 # y += 4
-		div $t0, $t4 # x mod 32
+		divu $t0, $t4 # x mod 32
 		mfhi $t0
-		sw $t0, 0($t3) # update frogx
+		sw $t0, 0($t3) # update frog y
 		j end_handle_input
+
+		
+		y_down_overflow: # handle frog x going too far down
+			li $t4, 28
+			sw $t4, 0($t3)
+			j end_handle_input
 		
 	respond_to_W: # go up
 		la $t3 frogy
 		lw $t0 frogy
 	
-		addi $t0, $t0, -4 # y += 4
-		div $t0, $t4 # x mod 32
+		addi $t0, $t0, -4 # y -= 4
+		divu $t0, $t4 # x mod 32
 		mfhi $t0
-		sw $t0, 0($t3) # update frogx
+		sw $t0, 0($t3) # update frog y
 		j end_handle_input
 	
 	respond_to_D: # go right
 		la $t3 frogx
 		lw $t0 frogx
+		
+		li $t2 24 # t2 = screen width - 2*frog width
+		bgt $t0, $t2 x_right_overflow # if frogx > t2
 	
 		addi $t0, $t0, 4 # x -= 4
 		div $t0, $t4 # x mod 32
 		mfhi $t0
-		sw $t0, 0($t3) # update frogx
+		sw $t0, 0($t3) # update frog x
 		j end_handle_input
+		
+		x_right_overflow: # handle frog x going too far right
+			li $t4, 28
+			sw $t4, 0($t3)
+			j end_handle_input
 	
+	# ----- handle poor x value -----
+
+	
+
+		
+
 
 drawRect: # drawRect(x, y, height, width, color) -> null
 # draw a rectangle given top left point, height, width, color
