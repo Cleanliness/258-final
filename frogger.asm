@@ -28,7 +28,7 @@ lane1Speed: .word 1 # road lower
 lane2Speed: .word -1 # road top
 lane3Speed: .word 1 # log bottom
 lane4Speed: .word -1 # log mid
-lane5Speed: .word 1 # log top
+lane5Speed: .word 2 # log top
 
 # x position of hazards
 lane1x: .word 10
@@ -44,8 +44,9 @@ fz3_full: .word 0
 fz4_full: .word 0
 
 # frog data
-frogx: .word 14
-frogy: .word 28 # starting position
+frogx: .word 14 # starting position x
+frogy: .word 28 # starting position y
+frogdx: .word 0 # frog's horizontal velocity from environment
 lives: .word 3 # number of lives
 completed: .word 0 # num frogs reached finish point
 
@@ -133,6 +134,9 @@ main: # entry point
 	mfhi $t1
 	sw $t1 0($t3)
 	
+	# update frog position
+	jal shift_frog_pos
+	
 		
 	# ---- drawing logs ----
 	lw $t0, lane3x # x1
@@ -176,9 +180,20 @@ Exit:
 li $v0, 10 # terminate the program gracefully
 syscall
 
-check_log_collisions: # check_log_collisions() -> collided
-# check if log collided with frog
+shift_frog_pos: # shift_frog_pos() -> null
+# shift frog position due to environment
+	lw $t0, frogdx
+	lw $t1, frogx
+	la $t2, frogx
+	li $t3, 32
+	
+	add $t1, $t1, $t0 # add pos, loop over
+	divu $t1, $t3 # new pos mod 32
+	mfhi $t1
+	sw $t1, 0($t2)
+	jr $ra
 
+check_log_collisions: # check_log_collisions() -> null
 # ------ RETURN VALUES ------
 # v0 = collided status --> 1 if collided, 0 otherwise
 
@@ -195,7 +210,7 @@ check_log_collisions: # check_log_collisions() -> collided
 	add $t6, $t6, $t7 # t6 = 2 if frog in log area
 	
 	li $t0, 2
-	bne $t6, $t0, end_log_collision
+	bne $t6, $t0, log_coll_not_in_area
 	
 	# --------- lane 3 ------------
 	# right water
@@ -325,11 +340,43 @@ check_log_collisions: # check_log_collisions() -> collided
 	
 	li $t1, 1
 	beq $v0, $t1, Exit # kill player if touching water
+	
+	# ---------- determine frog's horizontal velocity ------------
+	lw $t0, frogx
+	lw $t2, frogy
+	la $t1, frogdx
+	li $t3, 4
+	li $t4, 8
+	
+	beq $t2, $t3, log_coll_in_lane_5
+	beq $t2, $t4, log_coll_in_lane_4
+	
+	log_coll_in_lane_3: # else
+		lw $t6, lane3Speed
+		sw $t6, 0($t1)
+		j end_log_collision
+		
+	log_coll_in_lane_5:
+		lw $t6 lane5Speed
+		sw $t6, 0($t1)
+		j end_log_collision
+		
+	log_coll_in_lane_4:
+		lw $t6 lane4Speed
+		sw $t6, 0($t1)
+		j end_log_collision
+		
+	log_coll_not_in_area: # if frog is not in log area
+		la $t0, frogdx
+		li $t1, 0
+		sw $t1 0($t0) # set frog dx to 0 by default
+		j end_log_collision
 	end_log_collision:
 	# retrieve return address
 	addi $sp, $sp, 4
 	lw $ra 0($sp)
 	jr $ra # return from log collision check
+	
 	
 check_car_collisions: # check_car_collisions() -> null
 # check if cars collided with frog
