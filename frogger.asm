@@ -70,6 +70,11 @@ main: # entry point
 	mfhi $t1
 	beq $t1, $zero, update_environment
 	
+	#  ============================= teststttstst ============================= 
+	jal check_car_collisions
+	jal check_log_collisions
+	#  ============================= teststttstst ============================= 
+	
 	# sleep
 	li $v0, 32
 	li $a0, 30
@@ -88,7 +93,7 @@ main: # entry point
 	lw $t1, lane1x # lane 1
 	lw $t2, lane1Speed # add speed
 	add $t1, $t1, $t2
-	div $t1, $t0 # x mod 32
+	divu $t1, $t0 # x mod 32
 	mfhi $t1
 	sw $t1 0($t3)
 	
@@ -97,7 +102,7 @@ main: # entry point
 	la $t3, lane2x # address
 	lw $t2, lane2Speed
 	add $t1, $t1, $t2
-	div $t1, $t0 # x mod 32
+	divu $t1, $t0 # x mod 32
 	mfhi $t1
 	sw $t1 0($t3)
 
@@ -106,7 +111,7 @@ main: # entry point
 	la $t3, lane3x # address
 	lw $t2, lane3Speed
 	add $t1, $t1, $t2
-	div $t1, $t0 # x mod 32
+	divu $t1, $t0 # x mod 32
 	mfhi $t1
 	sw $t1 0($t3) 
 
@@ -115,7 +120,7 @@ main: # entry point
 	la $t3, lane4x # address
 	lw $t2, lane4Speed
 	add $t1, $t1, $t2
-	div $t1, $t0 # x mod 32
+	divu $t1, $t0 # x mod 32
 	mfhi $t1
 	sw $t1 0($t3)
 
@@ -124,7 +129,7 @@ main: # entry point
 	la $t3, lane5x # address
 	lw $t2, lane5Speed
 	add $t1, $t1, $t2
-	div $t1, $t0 # x mod 32
+	divu $t1, $t0 # x mod 32
 	mfhi $t1
 	sw $t1 0($t3)
 	
@@ -170,6 +175,318 @@ main: # entry point
 Exit:
 li $v0, 10 # terminate the program gracefully
 syscall
+
+check_log_collisions: # check_log_collisions() -> collided
+# check if log collided with frog
+
+# ------ RETURN VALUES ------
+# v0 = collided status --> 1 if collided, 0 otherwise
+
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
+	# check if frog is in log area
+	lw $t0 frogy
+	li $t1, 4
+	sge $t6, $t0, $t1 # t6 = frogy >= 4
+	li $t1, 15
+	sle $t7, $t0, $t1 # t6 = frogy <= 15
+	add $t6, $t6, $t7 # t6 = 2 if frog in log area
+	
+	li $t0, 2
+	bne $t6, $t0, end_log_collision
+	
+	# --------- lane 3 ------------
+	# right water
+	lw $t0, lane3x # x
+	addi $t0, $t0, 13 # add width of log + 1
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 12 # y
+	li $t2, 1 # width of water -2
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit # kill player if touching water right of log
+	
+	# left water
+	lw $t0, lane3x # x
+	addi $t0, $t0, 24 # offset + width of right log + 1
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 12 # y
+	li $t2, 4 # 32 - t0 - 2
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit # kill player if touching water
+	
+	# --------- lane 4 ------------
+	# right water
+	lw $t0, lane4x # x
+	addi $t0, $t0, 9 # add width of log + 1
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 8 # y
+	li $t2, 8 # width of water - 2
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit # kill player if touching water right of log
+
+	# left water
+	lw $t0, lane4x # x
+	addi $t0, $t0, 27 # x += offset + width + 1
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 8 # y
+	li $t2, 4 # width
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit # kill player if touching water
+	
+	# --------- lane 5 ------------
+	# right water
+	lw $t0, lane5x # x
+	addi $t0, $t0, 9 # add width of log + 1
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 4 # y
+	li $t2, 2 # width of water - 2
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit # kill player if touching water right of log
+	
+	# left water
+	lw $t0, lane5x # x
+	addi $t0, $t0, 23 # x += offset + width + 1
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 4 # y
+	li $t2, 8 # width
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit # kill player if touching water
+	end_log_collision:
+	# retrieve return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+	jr $ra # return from log collision check
+	
+check_car_collisions: # check_car_collisions() -> null
+# check if cars collided with frog
+# TODO: reduce lives instead of exit
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
+	# --------- lane 1 ------------
+	# left car
+	lw $t0, lane1x # x
+	li $t1, 24 # y
+	li $t2, 6 # width
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit
+	
+	# right car
+	lw $t0, lane1x # x
+	addi $t0, $t0, 16 # add offset
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 24 # y
+	li $t2, 6 # width
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit
+	
+	# --------- lane 2 ------------
+	# left car
+	lw $t0, lane2x # x
+	li $t1, 20 # y
+	li $t2, 6 # width
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit
+	
+	# right car
+	lw $t0, lane2x # x
+	addi $t0, $t0, 12 # add offset
+	li $t1, 32
+	divu $t0, $t1 # x mod 32
+	mfhi $t0
+	li $t1, 20 # y
+	li $t2, 6 # width
+	li $t3, 4 # height
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3, -12($sp)
+	addi $sp, $sp, -16
+	jal check_in_bounds
+	
+	li $t1, 1
+	beq $v0, $t1, Exit
+	
+	# retrieve return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+	jr $ra # return from car collision check
+	
+check_in_bounds: # check_in_bounds(x, y, width, height) -> true/false
+# check if the frog is in bounds of a rectangle. Return 1 if true
+# assume width and height are at least 4
+# assume rectangles are aligned with lanes
+
+	# initialization
+	addi $sp, $sp, 4
+	lw $a0 0($sp) # a0 = height
+	lw $a1 4($sp) # a1 = width
+	lw $a2 8($sp) # a2 = y
+	lw $a3 12($sp) # a3 = x
+	addi $sp, $sp, 12 # decrease stack size
+	
+	lw $t0, frogx
+	lw $t1, frogy
+	li $t4, 32
+	# ----- check y is in bounds
+	bne $t1, $a2, end_check_in_bounds # frog y = rect y
+	
+	# ----- check x is in bounds ------
+	# get rightmost pixel of rect
+	add $t3, $a3, $a1 # t3 = width + x
+	addi $t3, $t3, -1 # off by 1 error
+	
+	addi $t2, $t0, 3 # t2 = rightmost x coord of frog
+	
+	bge $t3, $t4, check_in_bounds_loopover # jump to loopover case instead
+	
+	# else:
+	sle $t0, $t0, $t3 # t0 = (frog left <= rect right)
+	sge $t2, $t2, $a3 # t2 = (frog right >= rect left)
+	add $t0, $t0, $t2 # t0 + t2
+	li $t2, 2
+	beq $t0, $t2, check_in_bounds_true # if both true
+	
+	check_in_bounds_false: # frog not detected in bounds (default)
+		li $v0, 0 # return value = 0
+		
+	end_check_in_bounds:
+	# return from check_in_bounds()
+	jr $ra
+	
+	check_in_bounds_loopover: # case if rectangle loops back
+		div $t3, $t4 # x mod 32
+		mfhi $t3 # t3 = looped over pixel
+		
+		# check if frog in left loopover
+		sle $t4, $t0, $t3 # t4 = frogleft <= rect right 
+		sge $t5, $t0, $zero # t5 = frogleft >= 0
+		add $t0, $t4, $t5 # t0 + t2
+		li $t4, 2
+		beq $t0, $t4, check_in_bounds_true # if both true return
+		
+		# check if frog in right rect
+		li $t6, 31
+		sle $t4, $t2, $t6 # t4 = frogright <= 31
+		sge $t5, $t2, $a3 # t5 = frogright >= rect left
+		
+		add $t0, $t4, $t5 # t0 + t2
+		li $t4, 2
+		beq $t0, $t4, check_in_bounds_true # if both true return
+		j check_in_bounds_false
+		
+	check_in_bounds_true: # frog was detected in bounds
+		li $v0, 1 # return value = 1
+		j end_check_in_bounds
 
 check_completed: # check_completed() -> null
 # check if the frog reached a valid completion region
