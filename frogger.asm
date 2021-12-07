@@ -52,6 +52,11 @@ completed: .word 0 # num frogs reached finish point
 
 .text
 main: # entry point
+	
+	# check number of lives
+	lw $t0 lives
+	beq $t0, $zero, GameOver
+	
 	# ------ handle keyboard input for frog -----
 	lw $t8, 0xffff0000
 	beq $t8, 1, handle_input
@@ -71,10 +76,9 @@ main: # entry point
 	mfhi $t1
 	beq $t1, $zero, update_environment
 	
-	#  ============================= teststttstst ============================= 
+	# checking collisions
 	jal check_car_collisions
 	jal check_log_collisions
-	#  ============================= teststttstst ============================= 
 	
 	# sleep
 	li $v0, 32
@@ -176,9 +180,515 @@ main: # entry point
 	jal drawLives
 	
 	j main # game loop
+
+GameOver: # game over loop
+	jal draw_game_over
+	GameOverListen: # loop for listening to response
+	lw $t8, 0xffff0000
+	beq $t8, 1, game_over_keypress
+	j GameOverListen
+	
+	game_over_keypress:
+		lw $t2, 0xffff0004 # t2 = keyboard value
+		beq $t2, 0x31, respond_to_1 # check if 'a' is pressed
+		beq $t2, 0x30, respond_to_0  # check if 's' is pressed	
+		j GameOverListen
+	
+	respond_to_1:
+		j Exit
+	respond_to_0:
+		# reset frog position
+		li $t3, 14 # x
+		la $t0, frogx
+			
+		li $t4, 28 # y
+		la $t5, frogy
+			
+		# reset frog position to initial
+		sw $t3, 0($t0) # x
+		sw $t4, 0($t5) # y
+		
+		# reset lives
+		li $t0, 3
+		la $t1, lives
+		
+		sw $t0, 0($t1)
+		j main
 Exit:
 li $v0, 10 # terminate the program gracefully
 syscall
+
+draw_game_over: # draw_game_over() -> null
+# draws the game over screen
+
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
+	# ====== draw background =====
+	li $t0, 0 # x
+	li $t1, 0 # y
+	li $t3, 32 # width
+	li $t2, 32 # height
+	li $t4, 0x00000000 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# ====== draw letters =====
+	li $t0, 9 # x
+	li $t1, 6 # y
+	li $t3, 3 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect	
+	
+	li $t0, 8 # x
+	li $t1, 7 # y
+	li $t3, 1 # width
+	li $t2, 4 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 9 # x
+	li $t1, 11 # y
+	li $t3, 3 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 11 # x
+	li $t1, 9 # y
+	li $t3, 1 # width
+	li $t2, 2 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 10 # x
+	li $t1, 9 # y
+	li $t3, 1 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# ------- second G ------
+	li $t0, 15 # x
+	li $t1, 6 # y
+	li $t3, 3 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect	
+	
+	li $t0, 14 # x
+	li $t1, 7 # y
+	li $t3, 1 # width
+	li $t2, 4 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 15 # x
+	li $t1, 11 # y
+	li $t3, 3 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 17 # x
+	li $t1, 9 # y
+	li $t3, 1 # width
+	li $t2, 2 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 16 # x
+	li $t1, 9 # y
+	li $t3, 1 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect		
+	
+	# ------- draw question mark ------
+	li $t0, 20 # x
+	li $t1, 6 # y
+	li $t3, 4 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect	
+	
+	li $t0, 23 # x
+	li $t1, 6 # y
+	li $t3, 1 # width
+	li $t2, 4 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect	
+	
+	li $t0, 22 # x
+	li $t1, 9 # y
+	li $t3, 1 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 22 # x
+	li $t1, 11 # y
+	li $t3, 1 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect	
+	
+	# ------ draw option 1 -----
+	li $t0, 4 # x
+	li $t1, 23 # y
+	li $t3, 1 # width
+	li $t2, 5 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 6 # x
+	li $t1, 24 # y
+	li $t3, 2 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 6 # x
+	li $t1, 26 # y
+	li $t3, 2 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 9 # x
+	li $t1, 23 # y
+	li $t3, 1 # width
+	li $t2, 3 # height
+	li $t4, 0x004caf4f # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 11 # x
+	li $t1, 23 # y
+	li $t3, 1 # width
+	li $t2, 3 # height
+	li $t4, 0x004caf4f # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+
+	li $t0, 10 # x
+	li $t1, 25 # y
+	li $t3, 1 # width
+	li $t2, 3 # height
+	li $t4, 0x004caf4f # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	# ----- draw option 2 -------
+	li $t0, 18 # x
+	li $t1, 23 # y
+	li $t3, 4 # width
+	li $t2, 5 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 19 # x
+	li $t1, 24 # y
+	li $t3, 2 # width
+	li $t2, 3 # height
+	li $t4, 0x00000000 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 23 # x
+	li $t1, 24 # y
+	li $t3, 2 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 23 # x
+	li $t1, 26 # y
+	li $t3, 2 # width
+	li $t2, 1 # height
+	li $t4, 0x00ffffff # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 26 # x
+	li $t1, 23 # y
+	li $t3, 1 # width
+	li $t2, 5 # height
+	li $t4, 0x00f44336 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 29 # x
+	li $t1, 23 # y
+	li $t3, 1 # width
+	li $t2, 5 # height
+	li $t4, 0x00f44336 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 27 # x
+	li $t1, 24 # y
+	li $t3, 1 # width
+	li $t2, 1 # height
+	li $t4, 0x00f44336 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	
+	li $t0, 28 # x
+	li $t1, 25 # y
+	li $t3, 1 # width
+	li $t2, 1 # height
+	li $t4, 0x00f44336 # color
+	
+	# push function arguments on stack
+	sw $t0 0($sp)
+	sw $t1 -4($sp)
+	sw $t2 -8($sp)
+	sw $t3 -12($sp)
+	sw $t4 -16($sp)
+	addi $sp, $sp, -20
+	jal drawRect
+	# retrieve return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+	jr $ra
+
+reduce_frog_lives: # reduce_frog_lives() -> null
+# reduce the number of lives by 1, reset frog position
+	lw $t0, lives
+	la $t1, lives
+			
+	addi $t0, $t0, -1
+	sw $t0, 0($t1)
+			
+	# reset frog position
+	li $t3, 14 # x
+	la $t0, frogx
+			
+	li $t4, 28 # y
+	la $t5, frogy
+			
+	# reset frog position to initial
+	sw $t3, 0($t0) # x
+	sw $t4, 0($t5) # y
+	jr $ra
 
 shift_frog_pos: # shift_frog_pos() -> null
 # shift frog position due to environment
@@ -232,7 +742,7 @@ check_log_collisions: # check_log_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit # kill player if touching water right of log
+	beq $v0, $t1, log_coll_life_lost # kill player if touching water right of log
 	
 	# left water
 	lw $t0, lane3x # x
@@ -253,7 +763,7 @@ check_log_collisions: # check_log_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit # kill player if touching water
+	beq $v0, $t1, log_coll_life_lost # kill player if touching water
 	
 	# --------- lane 4 ------------
 	# right water
@@ -275,7 +785,7 @@ check_log_collisions: # check_log_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit # kill player if touching water right of log
+	beq $v0, $t1, log_coll_life_lost # kill player if touching water right of log
 
 	# left water
 	lw $t0, lane4x # x
@@ -296,7 +806,7 @@ check_log_collisions: # check_log_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit # kill player if touching water
+	beq $v0, $t1, log_coll_life_lost # kill player if touching water
 	
 	# --------- lane 5 ------------
 	# right water
@@ -318,7 +828,7 @@ check_log_collisions: # check_log_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit # kill player if touching water right of log
+	beq $v0, $t1, log_coll_life_lost # kill player if touching water right of log
 	
 	# left water
 	lw $t0, lane5x # x
@@ -339,7 +849,7 @@ check_log_collisions: # check_log_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit # kill player if touching water
+	beq $v0, $t1, log_coll_life_lost # kill player if touching water
 	
 	# ---------- determine frog's horizontal velocity ------------
 	lw $t0, frogx
@@ -371,6 +881,8 @@ check_log_collisions: # check_log_collisions() -> null
 		li $t1, 0
 		sw $t1 0($t0) # set frog dx to 0 by default
 		j end_log_collision
+	log_coll_life_lost:
+		jal reduce_frog_lives
 	end_log_collision:
 	# retrieve return address
 	addi $sp, $sp, 4
@@ -401,7 +913,7 @@ check_car_collisions: # check_car_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit
+	beq $v0, $t1, car_coll_life_lost
 	
 	# right car
 	lw $t0, lane1x # x
@@ -422,7 +934,7 @@ check_car_collisions: # check_car_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit
+	beq $v0, $t1, car_coll_life_lost
 	
 	# --------- lane 2 ------------
 	# left car
@@ -440,7 +952,7 @@ check_car_collisions: # check_car_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit
+	beq $v0, $t1, car_coll_life_lost
 	
 	# right car
 	lw $t0, lane2x # x
@@ -461,12 +973,16 @@ check_car_collisions: # check_car_collisions() -> null
 	jal check_in_bounds
 	
 	li $t1, 1
-	beq $v0, $t1, Exit
+	beq $v0, $t1, car_coll_life_lost
 	
+	end_car_coll:
 	# retrieve return address
 	addi $sp, $sp, 4
 	lw $ra 0($sp)
 	jr $ra # return from car collision check
+	car_coll_life_lost:
+		jal reduce_frog_lives
+		j end_car_coll
 	
 check_in_bounds: # check_in_bounds(x, y, width, height) -> true/false
 # check if the frog is in bounds of a rectangle. Return 1 if true
