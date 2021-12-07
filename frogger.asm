@@ -22,7 +22,9 @@ tireColor: .word 0x00000000
 # =--------------- game data ---------------=
 # ===========================================
 gameclock: .word 0 # counter of how many ticks
-
+irltime: .word 0 # how many milliseconds has passed
+slptime: .word 30 # number of milliseconds to sleep
+numActions: .word 10 # number of actions allowed before environment update
 # hazard speeds
 lane1Speed: .word 1 # road lower
 lane2Speed: .word -1 # road top
@@ -57,6 +59,29 @@ main: # entry point
 	lw $t0 lives
 	beq $t0, $zero, GameOver
 	
+	# increase difficulty
+	lw $t0 gameclock
+	
+	li $t1, 333
+	beq $t0, $t1, increment_difficulty
+	li $t1, 666
+	beq $t0, $t1, increment_difficulty
+	li $t1, 999
+	beq $t0, $t1, increment_difficulty
+	li $t1, 1332
+	beq $t0, $t1, increment_difficulty
+	li $t1, 1665
+	beq $t0, $t1, increment_difficulty
+	li $t1, 1998
+	beq $t0, $t1, increment_difficulty
+	j timecheckDone
+	increment_difficulty:
+		la $t0 numActions
+		lw $t1 numActions
+		addi $t1, $t1, -1
+		sw $t1, 0($t0)
+	
+	timecheckDone:
 	# ------ handle keyboard input for frog -----
 	lw $t8, 0xffff0000
 	beq $t8, 1, handle_input
@@ -70,8 +95,8 @@ main: # entry point
 	addi $t1, $t0, 1 # ticks += 1
 	sw $t1 0($t3) # write value
 	
-	# check for every fifth tick
-	li $t0 5
+	# check for every nth tick (num of player movements allowed before update)
+	lw $t0 numActions
 	div $t1, $t0 # ticks mod 5
 	mfhi $t1
 	beq $t1, $zero, update_environment
@@ -82,15 +107,17 @@ main: # entry point
 	
 	# sleep
 	li $v0, 32
-	li $a0, 30
+	lw $a0, slptime
+	
+	lw $t0, irltime
+	la $t1, irltime
+	add $t0, $t0, $a0
 	syscall
 	
 	j main # game loop
 	
 	# ============== update environment ================
 	update_environment:
-	jal drawScene
-	
 	li $t0, 32 # screen width
 	
 	# update lane 1 position
@@ -141,7 +168,70 @@ main: # entry point
 	# update frog position
 	jal shift_frog_pos
 	
+	jal drawAll
+	j main # game loop
+
+GameOver: # game over loop
+	jal draw_game_over
+	GameOverListen: # loop for listening to response
+	lw $t8, 0xffff0000
+	beq $t8, 1, game_over_keypress
+	j GameOverListen
+	
+	game_over_keypress:
+		lw $t2, 0xffff0004 # t2 = keyboard value
+		beq $t2, 0x31, respond_to_1 # check if 'a' is pressed
+		beq $t2, 0x30, respond_to_0  # check if 's' is pressed	
+		j GameOverListen
+	
+	respond_to_1:
+		j Exit
+	respond_to_0:
+		# reset frog position
+		li $t3, 14 # x
+		la $t0, frogx
+			
+		li $t4, 28 # y
+		la $t5, frogy
+			
+		# reset frog position to initial
+		sw $t3, 0($t0) # x
+		sw $t4, 0($t5) # y
 		
+		# reset lives
+		li $t0, 3
+		la $t1, lives
+		
+		sw $t0, 0($t1)
+		
+		# reset filled points
+		la $t0 fz1_full
+		sw $zero 0($t0)
+		la $t0 fz2_full
+		sw $zero 0($t0)
+		la $t0 fz3_full
+		sw $zero 0($t0)
+		la $t0 fz4_full
+		sw $zero 0($t0)
+		
+		# reset game clock and difficulty
+		la $t0 gameclock
+		sw $zero, 0($t0)
+		
+		la $t0 numActions
+		li $t1, 10
+		sw $t1, 0($t0)
+		
+		j main
+Exit:
+li $v0, 10 # terminate the program gracefully
+syscall
+
+drawAll: # draw everything in the game
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	jal drawScene	
 	# ---- drawing logs ----
 	lw $t0, lane3x # x1
 	lw $t1, lane4x # x2
@@ -177,47 +267,12 @@ main: # entry point
 	jal drawFrog
 	
 	# ==== UI elements ====
-	jal drawLives
+	jal drawLives	
+	# retrieve return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
+	jr $ra	
 	
-	j main # game loop
-
-GameOver: # game over loop
-	jal draw_game_over
-	GameOverListen: # loop for listening to response
-	lw $t8, 0xffff0000
-	beq $t8, 1, game_over_keypress
-	j GameOverListen
-	
-	game_over_keypress:
-		lw $t2, 0xffff0004 # t2 = keyboard value
-		beq $t2, 0x31, respond_to_1 # check if 'a' is pressed
-		beq $t2, 0x30, respond_to_0  # check if 's' is pressed	
-		j GameOverListen
-	
-	respond_to_1:
-		j Exit
-	respond_to_0:
-		# reset frog position
-		li $t3, 14 # x
-		la $t0, frogx
-			
-		li $t4, 28 # y
-		la $t5, frogy
-			
-		# reset frog position to initial
-		sw $t3, 0($t0) # x
-		sw $t4, 0($t5) # y
-		
-		# reset lives
-		li $t0, 3
-		la $t1, lives
-		
-		sw $t0, 0($t1)
-		j main
-Exit:
-li $v0, 10 # terminate the program gracefully
-syscall
-
 draw_game_over: # draw_game_over() -> null
 # draws the game over screen
 
@@ -1171,13 +1226,23 @@ check_completed: # check_completed() -> null
 			
 handle_input: # handle_input() -> null
 # handle's user keyboard input for the game. Assume that a key has already been pressed
+
+	# push return address
+	sw $ra, 0($sp)
+	addi $sp, $sp, -4
+	
 	lw $t2, 0xffff0004 # t2 = keyboard value
 	li $t4, 32 #t4 = 32
 	beq $t2, 0x61, respond_to_A # check if 'a' is pressed
 	beq $t2, 0x73, respond_to_S  # check if 's' is pressed
 	beq $t2, 0x77, respond_to_W  # check if 'w' is pressed
 	beq $t2, 0x64, respond_to_D  # check if 'D' is pressed
+	
 	end_handle_input:
+	jal drawAll
+	# retrieve return address
+	addi $sp, $sp, 4
+	lw $ra 0($sp)
 	jr $ra # return from handle_input
 	
 	# ------ movement buttons pressed ------
